@@ -834,3 +834,119 @@ MoveTab:CreateToggle({
         Config.InfiniteJump = state
         if InfJumpConn then InfJumpConn:Disconnect() end
         if state then
+            InfJumpConn = UserInputService.JumpRequest:Connect(function()
+                local h = GetHumanoid()
+                if h then h:ChangeState(Enum.HumanoidStateType.Jumping) end
+            end)
+        end
+    end
+})
+
+local FlyConn
+MoveTab:CreateToggle({
+    Name = "Fly", CurrentValue = false, Flag = "Fly",
+    Callback = function(state)
+        Config.FlyEnabled = state
+        if FlyConn then FlyConn:Disconnect() end
+        if state then
+            local h = GetHumanoid(); if h then h.PlatformStand = true end
+            FlyConn = RunService.RenderStepped:Connect(function(dt)
+                local hrp = GetHRP(); if not hrp then return end
+                local camLook = Camera.CFrame.LookVector
+                local camRight = Camera.CFrame.RightVector
+                local md = Vector3.zero
+                if UserInputService:IsKeyDown(Enum.KeyCode.W) then md += camLook end
+                if UserInputService:IsKeyDown(Enum.KeyCode.S) then md -= camLook end
+                if UserInputService:IsKeyDown(Enum.KeyCode.D) then md += camRight end
+                if UserInputService:IsKeyDown(Enum.KeyCode.A) then md -= camRight end
+                if UserInputService:IsKeyDown(Enum.KeyCode.Space) then md += Vector3.new(0,1,0) end
+                if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then md -= Vector3.new(0,1,0) end
+                if md.Magnitude > 0 then md = md.Unit end
+                hrp.AssemblyLinearVelocity = Vector3.zero
+                hrp.AssemblyAngularVelocity = Vector3.zero
+                hrp.CFrame = CFrame.new(hrp.Position + md * Config.FlySpeed * dt) * Camera.CFrame.Rotation
+            end)
+        else
+            local h = GetHumanoid()
+            if h then h.PlatformStand = false; h:ChangeState(Enum.HumanoidStateType.GettingUp) end
+        end
+    end
+})
+MoveTab:CreateSlider({
+    Name = "Fly Speed", Range = {20, 250}, Increment = 5, CurrentValue = 80,
+    Callback = function(v) Config.FlySpeed = v end
+})
+
+local NoclipConn
+MoveTab:CreateToggle({
+    Name = "Noclip", CurrentValue = false, Flag = "Noclip",
+    Callback = function(state)
+        Config.Noclip = state
+        if NoclipConn then NoclipConn:Disconnect() end
+        if state then
+            NoclipConn = RunService.Stepped:Connect(function()
+                if LocalPlayer.Character then
+                    for _, p in ipairs(LocalPlayer.Character:GetDescendants()) do
+                        if p:IsA("BasePart") and p.CanCollide then p.CanCollide = false end
+                    end
+                end
+            end)
+        end
+    end
+})
+
+-- ═══════════════════════════════════════════════════════════
+--  VISUALS
+-- ═══════════════════════════════════════════════════════════
+VisTab:CreateToggle({
+    Name = "Full Bright", CurrentValue = false, Flag = "FullBright",
+    Callback = function(state)
+        Config.FullBright = state
+        if state then
+            Lighting.Brightness = 3
+            Lighting.Ambient = Color3.fromRGB(200, 200, 200)
+            Lighting.OutdoorAmbient = Color3.fromRGB(200, 200, 200)
+            Lighting.FogEnd = 100000
+            Lighting.FogStart = 0
+        else
+            Lighting.Brightness = OriginalLighting.Brightness
+            Lighting.Ambient = OriginalLighting.Ambient
+            Lighting.OutdoorAmbient = OriginalLighting.OutdoorAmbient
+            Lighting.FogEnd = OriginalLighting.FogEnd
+            Lighting.FogStart = OriginalLighting.FogStart
+        end
+    end
+})
+
+-- ═══════════════════════════════════════════════════════════
+--  SETTINGS
+-- ═══════════════════════════════════════════════════════════
+SetTab:CreateSection("Loop Settings")
+SetTab:CreateSlider({
+    Name = "Hold Time (сек)", Range = {0.5, 3}, Increment = 0.1, CurrentValue = 1.5,
+    Callback = function(v) Config.StealHold = v end
+})
+SetTab:CreateSlider({
+    Name = "Base Wait (сек)", Range = {0.5, 5}, Increment = 0.5, CurrentValue = 1.5,
+    Callback = function(v) Config.LoopBaseWait = v end
+})
+
+SetTab:CreateSection("Server")
+SetTab:CreateButton({
+    Name = "Rejoin Server",
+    Callback = function() game:GetService("TeleportService"):Teleport(game.PlaceId, LocalPlayer) end
+})
+
+-- ═══════════════════════════════════════════════════════════
+--  РЕСПАВН
+-- ═══════════════════════════════════════════════════════════
+LocalPlayer.CharacterAdded:Connect(function()
+    task.wait(1)
+    if Config.SpeedEnabled then local h = GetHumanoid(); if h then h.WalkSpeed = Config.SpeedValue end end
+    if Config.JumpEnabled then
+        local h = GetHumanoid()
+        if h then
+            if h.UseJumpPower then h.JumpPower = Config.JumpValue else h.JumpHeight = Config.JumpValue end
+        end
+    end
+end)
